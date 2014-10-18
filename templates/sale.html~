@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Record Sale{% endblock %}
+{% block content %}
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script src="js/vendor/jquery.ui.widget.js"></script>
+<script src="js/jquery.iframe-transport.js"></script>
+<script src="js/jquery.fileupload.js"></script>
+<script src="http://flesler-plugins.googlecode.com/files/jquery.scrollTo-1.4.3.1-min.js"></script>
+<script src="http://blueimp.github.io/JavaScript-Load-Image/js/load-image.min.js"></script>
+<script src="js/jquery.fileupload-process.js"></script>
+<script src="js/jquery.fileupload-image.js"></script>
+<script src="js/jquery.fileupload-validate.js"></script>
+<link rel="stylesheet" href="css/jquery.fileupload.css">
+
+<div class="container">
+  <div class="row">      
+    <div name="main_form" id="main_form" >  
+      <h2>Enter Inventory Number and Sale Price</h2>
+      
+      <form id="item_form">
+	<div id="item_form_group" class="form-group">
+	  <label for="inventory_number">Inventory Number</label>
+	  <input id="inventory_number" name="inventory_number" class="form-control"></input>
+	  
+	  <label for="sale_price">Sale Price</label>
+	  <input id="sale_price" name="sale_price" class="form-control"></input>
+	  <div id="error_msg"></div>
+ 	</div>	
+	<input type="submit" id="submitbutton" class="btn btn-default btn-lg"  class="form-control" value="Submit">
+      </form>
+      
+      <script>
+	$("#item_form").on( "submit", function (event) { 
+	console.log($(this).serialize());
+	$("#submitbutton").val("Hold you horses!!! Submitting...");
+	var numericExpression = /^[0-9.]+$/;
+	if($("#sale_price").val().match(numericExpression) && $("#inventory_number").val().match(numericExpression)){
+	 $.post("/sale/post", $("#item_form").serialize()).done( function(data) {
+	 console.log(JSON.stringify(data));
+	 if(data == "success"){
+	  $("#item_form")[0].reset();
+	  window.location = "/end";
+	 } else {
+	  $("#error_msg").html(data);
+	  $("#item_form_group").addClass("has-error") 
+	  $("#submitbutton").val("Resubmit");
+	 }
+	}); 
+	} else {
+	  $("#item_form_group").removeClass("has-error") 
+	  $("#error_msg").html("Price and Inventory Numbers must be numbers!");
+	}
+	
+	return false;
+	} );
+      </script>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

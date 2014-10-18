@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Photo Uploader{% endblock %}
+{% block content %}
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script src="js/vendor/jquery.ui.widget.js"></script>
+<script src="js/jquery.iframe-transport.js"></script>
+<script src="js/jquery.fileupload.js"></script>
+<script src="http://flesler-plugins.googlecode.com/files/jquery.scrollTo-1.4.3.1-min.js"></script>
+<script src="http://blueimp.github.io/JavaScript-Load-Image/js/load-image.min.js"></script>
+<script src="js/jquery.fileupload-process.js"></script>
+<script src="js/jquery.fileupload-image.js"></script>
+<script src="js/jquery.fileupload-validate.js"></script>
+<link rel="stylesheet" href="css/jquery.fileupload.css">
+
+<div class="container">
+  <div class="row">      
+    <h3> Categories</h3>
+      <form id="settings_form">
+	<div id = "settings_form_group" class="form-group">
+	  <label for="new_category">Enter New Category</label>
+	  <input id="new_category" name="new_category" class="form-control"></input>
+ 	  <div id="error_msg"></div>
+	</div>
+	<input type="submit" id="submitbutton" class="btn btn-default btn-lg"  class="form-control" value="Submit"> 
+      </form>
+      <br>
+
+      <div id="curr_settings">
+	{% for category in categories %}
+	<span class="label label-default">{{category.category}}</span>&nbsp
+	{% endfor %}
+      </div>
+
+
+      <script>
+       
+       $("#settings_form").on( "submit", function (event) { 
+	 console.log($(this).serialize());
+	 var form_alphabetic = /^[A-Za-z0-9\s]+$/;
+	 if($("#new_category").val().match(form_alphabetic)) {
+	   $.post("/settings/post", $("#settings_form").serialize()).done( 
+	     function(data) {
+	       console.log("done with submit"); 
+	       if(data != "failed"){
+		 if(data !="duplicate") {
+		   $("#curr_settings").append("<span class='label label-default'>"+data+"</span>")
+		   $("#settings_form_group").addClass("has-success");
+		   $("#submitbutton").val("Submit");
+		   $("#error_msg").html("Successfully added category");
+		 } else {
+		   $("#settings_form_group").addClass("has-error");
+		   $("#submitbutton").val("Resubmit");
+		   $("#error_msg").html("This category is in the system!");
+		 }
+	       }
+	     }); 
+	 } else {
+	   $("#settings_form_group").addClass("has-error");
+	   $("#submitbutton").val("Resubmit");
+	   $("#error_msg").html("Make sure category has only letters and numbers!");
+	 }
+	 
+	 return false;
+       });
+      </script>
+
+  </div>
+</div>
+
+{% endblock %}

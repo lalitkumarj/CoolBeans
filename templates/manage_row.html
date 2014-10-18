@@ -1,0 +1,84 @@
+      {% for item in items %}
+      <tr id="row_{{item.inventory_number}}">
+	<td> {{item.inventory_number}}</td>
+	<td> <img id="thumbnail_{{item.inventory_number}}" src="{{item.picture_url}}" width="100px" class="img-thumbnail"></img></td>
+	<td> {{item.category}}</td>
+	<td> {{item.status}} </td>
+	<td> {{item.buying_price}} </td>
+	<td> {{item.expected_sale_price}} </td>
+	<td> {{item.sale_price}} </td>
+	<td> {{item.date}}</td>
+	
+		
+	<td> 
+	  <form id="delete_form_{{item.inventory_number}}">
+	    <input type="hidden" id="postkey" name="postkey" value="{{item.inventory_number}}" class="form-control"/>
+	    <input type="submit" class="btn btn-default btn-med"  class="form-control" value="Delete">
+	  </form>
+	  <!-- <form id="edit_form_{{item.inventory_number}}">
+	  <input type="hidden" id="postkeyedit" name="postkeyedit" value="{{item.inventory_number}}" class="form-control"/>
+	  <input type="submit" class="btn btn-default btn-med"  class="form-control" value="Edit">
+	  </form> -->
+
+	  <button id="sell_form_{{item.inventory_number}}" type = "button" class="btn btn-default"> Sell </button>
+
+	  <!--This is the worst way ever. You are creating a new dailog for EVERY item. Bad and inefficient."-->
+	  <div id="dialog-confirm_{{item.inventory_number}}" title="Delete items?" style="display: none;">
+	    <p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>These items will be permanently deleted and cannot be recovered. Are you sure? </p>
+	  </div>
+
+	</td>
+	<script>
+
+	 $('#thumbnail_{{item.inventory_number}}').popover(
+	   {
+	     placement:'right', 
+	     width: 'auto',
+	     trigger:'hover',
+	     html:'true',
+	     content: function() { return '<img src="{{item.picture_url}}"></img>'}
+	   }
+	 );
+
+
+	 $(function() {
+	   $( "#dialog-confirm_{{item.inventory_number}}" ).dialog({
+	     resizable: false,
+	     height:200,
+	     modal: true,
+	     autoOpen: false,
+	     buttons: {
+	       "Ok": function() {
+		 $(this).dialog( "close" );
+		 do_post_{{item.inventory_number}}();
+	       },
+	       Cancel: function() {
+		 $( this ).dialog( "close" );
+	       }
+	     }
+	   });
+	 });
+	 
+	 
+	 function do_post_{{item.inventory_number}}(){
+	   console.log("in do_post");	     
+	   $.post("/manage/deletepost", $("#delete_form_{{item.inventory_number}}").serialize()).done( function(e) {
+	     $("#row_{{item.inventory_number}}").remove();
+	   });
+	 }
+	 
+	 $("#delete_form_{{item.inventory_number}}").on( "submit", function (event) { 	  
+										     $("#dialog-confirm_{{item.inventory_number}}").dialog('open'); 
+										     return false;
+	 });
+	 
+	 $("#sell_form_{{item.inventory_number}}").click( function (event) { 	  
+									    console.log("clicked save form");
+									    window.location = "/sale?inventory_number="+{{item.inventory_number}}
+	 });
+
+
+	</script>
+
+      </tr>
+      {% endfor %}

@@ -1,0 +1,11 @@
+      {% for category in rows %}
+      <tr >
+	<td> {{category.category}}</td>
+	<td> {{category.number_of_items}}</td>
+	<td> {{category.number_of_items_unsold}} </td>
+	<td> {{category.number_of_items_sold}} </td>
+	<!-- <td> ${{category.average_cost}} </td> -->
+	<td> ${{category.cost}} </td>
+	<td> ${{category.revenue}} </td>
+      </tr>
+      {% endfor %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %} Login {% endblock %}
+{% block content %}
+
+<div class="container">
+  <div class="starter-template">   
+    <p class="lead"> <h1> <div id="page-banner">Step One: Login </div> </h1> </p> 
+    <br/>
+    <br/>
+    <br/>
+    <div class="fb-stuff">
+    <fb:login-button scope="manage_pages,user_groups, publish_stream, publish_actions" size="xlarge" onlogin="require('./log').info('onlogin callback')">
+      Login to Facebook
+    </fb:login-button>
+    <div id="fb-root"></div>
+    </div>
+  </div>
+  
+</div>
+
+
+<script>
+  window.fbAsyncInit = function() {
+  FB.init({appId: '{{ facebook_app_id }}', status: true, cookie: true,
+  xfbml: true});
+
+  FB.Event.subscribe('{% if current_user %}auth.logout{% else %}auth.login{% endif %}', function(response) {
+  $('#fb-stuff').empty();
+  $('#page-banner').text("Loading...");
+  {% if current_user %} window.location = "/logout" {% else %} window.location = "/portal"; {% endif %}
+  });
+  };
+  (function() {
+  var e = document.createElement('script');
+  e.type = 'text/javascript';
+  e.src = document.location.protocol + '//connect.facebook.net/en_US/all.js';
+  e.async = true;
+  document.getElementById('fb-root').appendChild(e);
+  }());
+</script>
+{% endblock %}
