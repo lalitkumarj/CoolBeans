@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 
+#Emacs save files
+*~
+
 # C extensions
 *.so
 
