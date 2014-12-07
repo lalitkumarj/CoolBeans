@@ -107,17 +107,19 @@ trigger: 'focus'
 	<th> Picture </th>
 	<th> Category</th>
 	<th> Status </th>
+	<th> Quantity </th>
 	<th> Buying Price </th>
 	<th> Expected Sale Price </th>
 	<th> Sold Price </th>
 	<th> Post Date </th>
+	
 	<th>  </th>
       </tr>
-    </table>
-    <table class="table" id="rows">
+      <tbody id="rows">
       {% autoescape false %}
       {{rows|safe}}
       {% endautoescape %}
+      </tbody>
     </table>
   </div>
 </div>

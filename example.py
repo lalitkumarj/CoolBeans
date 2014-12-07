@@ -34,8 +34,10 @@ class Item(ndb.Model):
     sale_price = ndb.StringProperty(required=True)
     date = ndb.DateTimeProperty(auto_now_add=True)
     conversion_rate  = ndb.StringProperty(required=True)
-    category = ndb.StringProperty(required=True)
-
+    quantity = ndb.StringProperty(required=True)
+    category = ndb.StringProperty(required=False)
+    sales = ndb.StringProperty(repeated=True)
+    
 class BaseHandler(webapp2.RequestHandler):
     def dispatch(self):
         """
@@ -106,7 +108,8 @@ class ServiceHandler(BaseHandler):
                     sale_price  = "0",
                     conversion_rate = self.request.get("conversion_rate"),
                     status = "unsold",
-                    category = self.request.get("category")
+                    category = self.request.get("category"),
+                    quantity = self.request.get("quantity")
                   )
     
     
@@ -152,11 +155,22 @@ class SaleHandler(BaseHandler):
         if status == "sold":
             self.response.out.write("This item has already been sold")
         else:
-            query.sale_price = self.request.get("sale_price")
-            query.status = "sold"
+            sale_price = self.request.get("sale_price")
+            if len(query.sales) == int(query.quantity):
+                query.status = "sold"
+            query.sales.append(sale_price);
+            if len(query.sales) == int(query.quantity):
+                query.status = "sold"
+            query.sale_price = str(self.average(query.sales))
             query.put()
             self.response.out.write("success")
             #self.redirect('/redirect?submit_post')
+
+    def average(self, sales):
+        sum = 0
+        for s in sales:
+            sum+=float(s)
+        return (1.*sum)/len(sales)
         
 
 class DataHandler(BaseHandler):
@@ -167,23 +181,35 @@ class DataHandler(BaseHandler):
         #USe fetch instead
         items = [q for q in query.iter()]
 
-        cost = sum([0 if (q.conversion_rate==None) else round(float(q.buying_price)/float(q.conversion_rate),2) for q in query.iter()])
-        revenue = sum([0 if q.sale_price==None else float(q.sale_price) for q in query.iter()])
+        cost = sum([0 if (q.conversion_rate==None) else round(float(q.buying_price)*float(q.quantity)/float(q.conversion_rate),2) for q in query.iter()])
+        revenue = sum([0 if q.sale_price==None else float(q.sale_price)*float(len(q.sales)) for q in query.iter()])
         profit = revenue-cost
         
         query2 = Category.query(ancestor=ndb.Key('Category','chetna')).order(Category.category)
         categories = [q.category for q in query2.iter()]        
 
-        #Do this ten times better using filter
-        rows = [dict([                      
-            ('category',category),
-            ('number_of_items',len([0 for q in items if q.category==category])),
-            ('number_of_items_unsold',len([0 for q in items if (q.category==category and q.status=='unsold')])),
-            ('number_of_items_sold',len([0 for q in items if (q.category==category and q.status=='sold')])),
+
+        rows = []
+        for category in categories:
+            local_items = filter(lambda x: x.category == category,items)
+            d = dict()
+            d['category'] = category
+            d['number_of_items'] = sum([int(q.quantity) for q in local_items])
+            d['number_of_items_unsold'] = sum([int(q.quantity)-len(q.sales)  for q in local_items])
+            d['number_of_items_sold'] = sum([len(q.sales) for q in items if (q.category==category) ])
+            d['cost'] = sum([ 0 if (q.conversion_rate==None) else round(float(q.buying_price)*float(q.quantity)/float(q.conversion_rate),2) for q in local_items])
+            d['revenue'] = sum([  0 if q.sale_price==None else float(q.sale_price)*float(len(q.sales)) for q in local_items]))
+            rows.append(d)
+
+            #Do this ten times better using filter
+            #rows = [dict([                      
+            #('category',category),
+            #('number_of_items',sum([int(q.quantity) for q in items if q.category==category])),
+            #('number_of_items_unsold',sum([int(q.quantity)-len(q.sales)  for q in items if (q.category==category)])),
+            #('number_of_items_sold',sum([len(q.sales) for q in items if (q.category==category) ])),
             #('average_cost',sum([ 0 if (q.conversion_rate==None) else round(float(q.buying_price)/float(q.conversion_rate),2) for q in items if q.category==category ])/len([0 for q in items if q.category==category])),
-            ('cost',sum([ 0 if (q.conversion_rate==None) else round(float(q.buying_price)/float(q.conversion_rate),2) for q in items if q.category==category ])),
-            ('revenue',sum([  0 if q.sale_price==None else float(q.sale_price) for q in items if q.category==category ]))
-        ] ) for category in categories]
+        #('cost',sum([ 0 if (q.conversion_rate==None) else round(float(q.buying_price)*float(q.quantity)/float(q.conversion_rate),2) for q in items if q.category==category ])),
+           # ('revenue',sum([  0 if q.sale_price==None else float(q.sale_price)*float(len(q.sales)) for q in items if q.category==category ] ) for category in categories]
 
 
         self.response.out.write(template.render(dict(cost=str(round(cost, 2)), revenue=str(round(revenue, 2)),profit=str(round(profit, 2)),rows=template_rows.render(rows=rows))))
@@ -195,7 +221,7 @@ class ManageHandler(BaseHandler):
         template = jinja_environment.get_template('manage.html')
         template_row = jinja_environment.get_template('manage_row.html')
         query = Item.query(ancestor=ndb.Key('Item','chetna')).order(-Item.inventory_number)
-        items = self.build_items(query, limit=10)
+        items = self.build_items(query)
         # items = [dict([('inventory_number', q.inventory_number),
         #               ('key',str(q.key.pairs()[0][1]) +"_"+ str(q.key.pairs()[1][1])),
         #                ('date', q.date.date()), 
@@ -206,10 +232,14 @@ class ManageHandler(BaseHandler):
         #                ('sale_price', "$"+("0" if q.sale_price==None else q.sale_price)),
         #                ('category',q.category)
         #            ] ) for q in query.fetch(10)]
-
-        # for q in query.iter():
-        #     q.category = "Cushion Covers"
-        #     q.put()
+        
+        #Use this to do some bulk changes!!!
+        # for q in query:
+        #     if q.status == "sold" and len(q.sales)==0:
+        #         q.sales.append(q.sale_price)
+        #         print q.inventory_number
+        #         q.put()
+            #q.category = "Cushion Covers"
         query = Category.query(ancestor=ndb.Key('Category','chetna')).order(Category.category)
         categories = [dict([('category',q.category)] ) for q in query.iter()]        
         
@@ -254,7 +284,8 @@ class ManageHandler(BaseHandler):
                            ('expected_sale_price', "$"+ ("0" if q.expected_sale_price== None else q.expected_sale_price)),
                            ('buying_price',"$" + ("0" if (q.conversion_rate==None) else str(round(float(q.buying_price)/float(q.conversion_rate),2)))),
                            ('sale_price', "$"+("0" if q.sale_price==None else q.sale_price)),
-                           ('category',q.category)
+                           ('category',q.category),
+                           ('quantity',q.quantity)
                        ] ) for q in query.fetch()]
         else:
             items = [dict([('inventory_number', q.inventory_number),
@@ -265,7 +296,8 @@ class ManageHandler(BaseHandler):
                            ('expected_sale_price', "$"+ ("0" if q.expected_sale_price== None else q.expected_sale_price)),
                            ('buying_price',"$" + ("0" if (q.conversion_rate==None) else str(round(float(q.buying_price)/float(q.conversion_rate),2)))),
                            ('sale_price', "$"+("0" if q.sale_price==None else q.sale_price)),
-                           ('category',q.category)
+                           ('category',q.category),
+                           ('quantity',q.quantity)
                        ] ) for q in query.fetch(limit)]
             
         return items
