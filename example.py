@@ -156,8 +156,6 @@ class SaleHandler(BaseHandler):
             self.response.out.write("This item has already been sold")
         else:
             sale_price = self.request.get("sale_price")
-            if len(query.sales) == int(query.quantity):
-                query.status = "sold"
             query.sales.append(sale_price);
             if len(query.sales) == int(query.quantity):
                 query.status = "sold"
@@ -196,9 +194,9 @@ class DataHandler(BaseHandler):
             d['category'] = category
             d['number_of_items'] = sum([int(q.quantity) for q in local_items])
             d['number_of_items_unsold'] = sum([int(q.quantity)-len(q.sales)  for q in local_items])
-            d['number_of_items_sold'] = sum([len(q.sales) for q in items if (q.category==category) ])
+            d['number_of_items_sold'] = sum([len(q.sales) for q in local_items])
             d['cost'] = sum([ 0 if (q.conversion_rate==None) else round(float(q.buying_price)*float(q.quantity)/float(q.conversion_rate),2) for q in local_items])
-            d['revenue'] = sum([  0 if q.sale_price==None else float(q.sale_price)*float(len(q.sales)) for q in local_items]))
+            d['revenue'] = sum([  0 if q.sale_price==None else float(q.sale_price)*float(len(q.sales)) for q in local_items])
             rows.append(d)
 
             #Do this ten times better using filter
@@ -222,16 +220,6 @@ class ManageHandler(BaseHandler):
         template_row = jinja_environment.get_template('manage_row.html')
         query = Item.query(ancestor=ndb.Key('Item','chetna')).order(-Item.inventory_number)
         items = self.build_items(query)
-        # items = [dict([('inventory_number', q.inventory_number),
-        #               ('key',str(q.key.pairs()[0][1]) +"_"+ str(q.key.pairs()[1][1])),
-        #                ('date', q.date.date()), 
-        #                ('status', q.status),
-        #                ('picture_url', q.picture_url),
-        #                ('expected_sale_price', "$"+ ("0" if q.expected_sale_price== None else q.expected_sale_price)),
-        #                ('buying_price',"$" + ("0" if (q.conversion_rate==None) else str(round(float(q.buying_price)/float(q.conversion_rate),2)))),
-        #                ('sale_price', "$"+("0" if q.sale_price==None else q.sale_price)),
-        #                ('category',q.category)
-        #            ] ) for q in query.fetch(10)]
         
         #Use this to do some bulk changes!!!
         # for q in query:
@@ -285,7 +273,8 @@ class ManageHandler(BaseHandler):
                            ('buying_price',"$" + ("0" if (q.conversion_rate==None) else str(round(float(q.buying_price)/float(q.conversion_rate),2)))),
                            ('sale_price', "$"+("0" if q.sale_price==None else q.sale_price)),
                            ('category',q.category),
-                           ('quantity',q.quantity)
+                           ('quantity',q.quantity),
+                           ('quantity_sold',str(len(q.sales)))
                        ] ) for q in query.fetch()]
         else:
             items = [dict([('inventory_number', q.inventory_number),
@@ -297,7 +286,8 @@ class ManageHandler(BaseHandler):
                            ('buying_price',"$" + ("0" if (q.conversion_rate==None) else str(round(float(q.buying_price)/float(q.conversion_rate),2)))),
                            ('sale_price', "$"+("0" if q.sale_price==None else q.sale_price)),
                            ('category',q.category),
-                           ('quantity',q.quantity)
+                           ('quantity',q.quantity),
+                           ('quantity_sold',str(len(q.sales)))
                        ] ) for q in query.fetch(limit)]
             
         return items
