@@ -116,6 +116,32 @@ class ServiceHandler(BaseHandler):
         item.put()
         self.response.out.write(inventory_number)
 #        self.redirect('/redirect?submit_post&inventory_number='+inventory_number)
+
+     
+class ModalHandler(BaseHandler):
+
+            
+    def post(self):
+        inventory_number = self.request.get("inventory_number");
+        category = self.request.get("category")
+        buying_price = self.request.get("buying_price")
+        quantity = self.request.get("quantity")
+        expected_sale_price = self.request.get("expected_sale_price")
+        print inventory_number,category,buying_price,quantity,expected_sale_price
+
+        queries = Item.query(Item.inventory_number==inventory_number, ancestor=ndb.Key('Item','chetna')) #better be unique !!!!
+        query  = queries.fetch()[0]
+        query.category = category
+        query.buying_price = buying_price
+        query.quantity = quantity
+        query.expected_sale_price = expected_sale_price
+        query.put()
+        template_row = jinja_environment.get_template('manage_row.html')
+
+        items = build_items(queries)
+        self.response.out.write(template_row.render(dict(items=items)))
+        
+        #self.redirect('/redirect?submit_post&inventory_number='+inventory_number)
      
 class SettingsHandler(BaseHandler):
     def get(self):
@@ -219,7 +245,7 @@ class ManageHandler(BaseHandler):
         template = jinja_environment.get_template('manage.html')
         template_row = jinja_environment.get_template('manage_row.html')
         query = Item.query(ancestor=ndb.Key('Item','chetna')).order(-Item.inventory_number)
-        items = self.build_items(query)
+        items = build_items(query)
         
         #Use this to do some bulk changes!!!
         # for q in query:
@@ -231,7 +257,7 @@ class ManageHandler(BaseHandler):
         query = Category.query(ancestor=ndb.Key('Category','chetna')).order(Category.category)
         categories = [dict([('category',q.category)] ) for q in query.iter()]        
         
-        self.response.out.write(template.render(dict(rows = template_row.render(dict(items = items)),categories=categories)))
+        self.response.out.write(template.render(dict(rows = template_row.render(dict(items = items,categories=categories)),categories=categories)))
     
     def post(self):
         if self.request.path == '/manage/deletepost':
@@ -245,7 +271,7 @@ class ManageHandler(BaseHandler):
             category = self.request.get("category")
             print category
             queries = Item.query(Item.category==category, ancestor=ndb.Key('Item','chetna')).order(-Item.inventory_number) #better be unique !!!!
-            items = self.build_items(queries)
+            items = build_items(queries)
             self.response.out.write(template_row.render(dict(items=items)))
 
         elif self.request.path == '/manage/query_inventory_number':
@@ -257,27 +283,27 @@ class ManageHandler(BaseHandler):
             if queries.count() == 0:
                 self.response.out.write("fail")
             else:
-                items = self.build_items(queries)
+                items = build_items(queries)
                 self.response.out.write(template_row.render(dict(items=items)))
             
 
-    def build_items(self,query,limit=0):
-        items = []
-        if limit == 0:
-            items = [dict([('inventory_number', q.inventory_number),
+def build_items(query,limit=0):
+    items = []
+    if limit == 0:
+        items = [dict([('inventory_number', q.inventory_number),
                            ('key',str(q.key.pairs()[0][1]) +"_"+ str(q.key.pairs()[1][1])),
                            ('date', q.date.date()), 
                            ('status', q.status),
                            ('picture_url', q.picture_url),
-                           ('expected_sale_price', "$"+ ("0" if q.expected_sale_price== None else q.expected_sale_price)),
-                           ('buying_price',"$" + ("0" if (q.conversion_rate==None) else str(round(float(q.buying_price)/float(q.conversion_rate),2)))),
-                           ('sale_price', "$"+("0" if q.sale_price==None else q.sale_price)),
+                           ('expected_sale_price',("0" if q.expected_sale_price== None else q.expected_sale_price)),
+                           ('buying_price',("0" if (q.conversion_rate==None) else str(round(float(q.buying_price)/float(q.conversion_rate),2)))),
+                           ('sale_price',("0" if q.sale_price==None else q.sale_price)),
                            ('category',q.category),
                            ('quantity',q.quantity),
                            ('quantity_sold',str(len(q.sales)))
                        ] ) for q in query.fetch()]
-        else:
-            items = [dict([('inventory_number', q.inventory_number),
+    else:
+        items = [dict([('inventory_number', q.inventory_number),
                            ('key',str(q.key.pairs()[0][1]) +"_"+ str(q.key.pairs()[1][1])),
                            ('date', q.date.date()), 
                            ('status', q.status),
@@ -290,7 +316,7 @@ class ManageHandler(BaseHandler):
                            ('quantity_sold',str(len(q.sales)))
                        ] ) for q in query.fetch(limit)]
             
-        return items
+    return items
 
         
 class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):        
@@ -338,7 +364,7 @@ jinja_environment = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname("templates/base.html")) , autoescape=True, extensions=['jinja2.ext.autoescape'])
 
 application = webapp2.WSGIApplication(
-    [('/settings',SettingsHandler),('/settings/post',SettingsHandler),('/manage', ManageHandler),('/manage/[^/]+', ManageHandler),('/', HomeHandler), ('/portal', PortalHandler),('/upload',UploadHandler), ('/service', ServiceHandler),('/service/post',ServiceHandler),('/sale', SaleHandler),('/sale/post',SaleHandler),('/redirect?',RedirectHandler),('/data',DataHandler),('/end?',EndHandler)],
+    [('/settings',SettingsHandler),('/settings/post',SettingsHandler),('/manage', ManageHandler),('/manage/[^/]+', ManageHandler),('/', HomeHandler), ('/portal', PortalHandler),('/upload',UploadHandler), ('/service', ServiceHandler),('/service/post',ServiceHandler),('/modal/post',ModalHandler),('/sale', SaleHandler),('/sale/post',SaleHandler),('/redirect?',RedirectHandler),('/data',DataHandler),('/end?',EndHandler)],
     debug=True,
     config=config
 )

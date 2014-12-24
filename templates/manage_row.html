@@ -1,86 +1,182 @@
       {% for item in items %}
-      <tr id="row_{{item.inventory_number}}">
-	<td> {{item.inventory_number}}</td>
-	<td> <img id="thumbnail_{{item.inventory_number}}" src="{{item.picture_url}}" width="100px" class="img-thumbnail"></img></td>
-	<td> {{item.category}}</td>
-	<td> {{item.status}} </td>
-	<td> {{item.quantity}}</td>
-	<td> {{item.quantity_sold}}</td>
-	<td> {{item.buying_price}} </td>
-	<td> {{item.expected_sale_price}} </td>
-	<td> {{item.sale_price}} </td>
-	<td> {{item.date}}</td>
-	
-		
-	<td> 
-	  <form id="delete_form_{{item.inventory_number}}">
-	    <input type="hidden" id="postkey" name="postkey" value="{{item.inventory_number}}" class="form-control"/>
-	    <input type="submit" class="btn btn-default btn-med"  class="form-control" value="Delete">
-	  </form>
-	  <!-- <form id="edit_form_{{item.inventory_number}}">
-	  <input type="hidden" id="postkeyedit" name="postkeyedit" value="{{item.inventory_number}}" class="form-control"/>
-	  <input type="submit" class="btn btn-default btn-med"  class="form-control" value="Edit">
-	  </form> -->
+<div id="{{item.inventory_number}}">    
+  <tr id="row_{{item.inventory_number}}">
+    <td> {{item.inventory_number}}</td>
+    <td> <img id="thumbnail_{{item.inventory_number}}" src="{{item.picture_url}}" width="100px" class="img-thumbnail"></img></td>
+    <td> {{item.category}}</td>
+    <td> {{item.status}} </td>
+    <td> {{item.quantity}}</td>
+    <td> {{item.quantity_sold}}</td>
+    <td> {{item.buying_price}} </td>
+    <td> {{item.expected_sale_price}} </td>
+    <td> {{item.sale_price}} </td>
+    <td> {{item.date}}</td>
+    
+    
+    <td> 
+      <form id="delete_form_{{item.inventory_number}}">
+	<input type="hidden" id="postkey" name="postkey" value="{{item.inventory_number}}" class="form-control"/>
+	<input type="submit" class="btn btn-default btn-med"  class="form-control" value="Delete">
+      </form>
+      <!-- <form id="edit_form_{{item.inventory_number}}">
+	   <input type="hidden" id="postkeyedit" name="postkeyedit" value="{{item.inventory_number}}" class="form-control"/>
+	   <input type="submit" class="btn btn-default btn-med"  class="form-control" value="Edit">
+	</form> -->
 
-	  <button id="sell_form_{{item.inventory_number}}" type = "button" class="btn btn-default"> Sell </button>
+      <button id="sell_form_{{item.inventory_number}}" type = "button" class="btn btn-default"> Sell </button>
+      <button id="edit_form_{{item.inventory_number}}" type = "button" class="btn btn-default"> Edit </button>
 
-	  <!--This is the worst way ever. You are creating a new dailog for EVERY item. Bad and inefficient."-->
-	  <div id="dialog-confirm_{{item.inventory_number}}" title="Delete items?" style="display: none;">
-	    <p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>These items will be permanently deleted and cannot be recovered. Are you sure? </p>
-	  </div>
+      <!--This is the worst way ever. You are creating a new dailog for EVERY item. Bad and inefficient."-->
+      <div id="dialog-confirm_{{item.inventory_number}}" title="Delete items?" style="display: none;">
+	<p><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>These items will be permanently deleted and cannot be recovered. Are you sure? </p>
+      </div>
 
-	</td>
-	<script>
-
-	 $('#thumbnail_{{item.inventory_number}}').popover(
-	   {
-	     placement:'right', 
-	     width: 'auto',
-	     trigger:'hover',
-	     html:'true',
-	     content: function() { return '<img src="{{item.picture_url}}"></img>'}
-	   }
-	 );
+    </td>
 
 
-	 $(function() {
-	   $( "#dialog-confirm_{{item.inventory_number}}" ).dialog({
-	     resizable: false,
-	     height:200,
-	     modal: true,
-	     autoOpen: false,
-	     buttons: {
-	       "Ok": function() {
-		 $(this).dialog( "close" );
-		 do_post_{{item.inventory_number}}();
-	       },
-	       Cancel: function() {
-		 $( this ).dialog( "close" );
-	       }
-	     }
-	   });
-	 });
-	 
-	 
-	 function do_post_{{item.inventory_number}}(){
-	   console.log("in do_post");	     
-	   $.post("/manage/deletepost", $("#delete_form_{{item.inventory_number}}").serialize()).done( function(e) {
-	     $("#row_{{item.inventory_number}}").remove();
-	   });
-	 }
-	 
-	 $("#delete_form_{{item.inventory_number}}").on( "submit", function (event) { 	  
-										     $("#dialog-confirm_{{item.inventory_number}}").dialog('open'); 
-										     return false;
-	 });
-	 
-	 $("#sell_form_{{item.inventory_number}}").click( function (event) { 	  
-									    console.log("clicked save form");
-									    window.location = "/sale?inventory_number="+{{item.inventory_number}}
-	 });
+    <script>
+
+      $('#thumbnail_{{item.inventory_number}}').popover(
+      {
+      placement:'right', 
+      width: 'auto',
+      trigger:'hover',
+      html:'true',
+      content: function() { return '<img src="{{item.picture_url}}"></img>'}
+      }
+      );
 
 
-	</script>
+      $(function() {
+      $( "#dialog-confirm_{{item.inventory_number}}" ).dialog({
+      resizable: false,
+      height:200,
+      modal: true,
+      autoOpen: false,
+      buttons: {
+      "Ok": function() {
+      $(this).dialog( "close" );
+      do_post_{{item.inventory_number}}();
+      },
+      Cancel: function() {
+      $( this ).dialog( "close" );
+      }
+      }
+      });
+      });
+      
+      
+      function do_post_{{item.inventory_number}}(){
+      console.log("in do_post");	     
+      $.post("/manage/deletepost", $("#delete_form_{{item.inventory_number}}").serialize()).done( function(e) {
+      $("#row_{{item.inventory_number}}").remove();
+      });
+      }
+      
+      $("#delete_form_{{item.inventory_number}}").on( "submit", function (event) { 	  
+      $("#dialog-confirm_{{item.inventory_number}}").dialog('open'); 
+      return false;
+      });
+      
+      $("#sell_form_{{item.inventory_number}}").click( function (event) { 	  
+      console.log("clicked save form");
+      window.location = "/sale?inventory_number="+{{item.inventory_number}}
+      });
 
-      </tr>
-      {% endfor %}
+      $("#edit_form_{{item.inventory_number}}").click( function (event) { 	  
+      $('#edit_modal_{{item.inventory_number}}').modal('show')
+      });
+
+
+    </script>
+
+
+
+  </tr>
+</div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="edit_modal_{{item.inventory_number}}" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+            <div class="modal-header">
+              <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+              <h4 class="modal-title" id="myModalLabel">Edit Item {{item.inventory_number}}</h4>
+            </div>
+      
+            <div class="modal-body">
+
+                <form id="modal_item_form_{{item.inventory_number}}" class="form-inline" role="form">
+
+              	<select id= "category" name="category" class="form-control" initial="{{item.category}}">
+              	  {% for category in categories %}
+              	  <option value="{{category.category}}" {{ "selected" if category.category==item.category }}> {{category.category}} </option>
+              	  {% endfor %}
+              	</select>
+
+              	<div class="row">      
+                        	  <div name="modal_main_form" id="modal_main_form" >        
+                                    	      <div id = "modal_item_form_group" class="modal-form-group">
+
+                                    		<label for="buying_price_{{item.inventory_number}}">Buying Price (RS)</label>
+                                    		<input id="buying_price_{{item.inventory_number}}" name="buying_price" class="form-control" value="{{item.buying_price}}"></input>
+                                    		
+                                    		<label for="expected_sale_price_{{item.inventory_number}}">Expected Sale Price ($)</label>
+                                    		<input id="expected_sale_price_{{item.inventory_number}}" name="expected_sale_price" class="form-control" value="{{item.expected_sale_price}}"></input>
+
+
+                                    		<label for="quantity_{{item.inventory_number}}">Quantity</label>
+                                    		<input id="quantity_{{item.inventory_number}}" name="quantity" class="form-control" value="{{item.quantity}}"></input>
+
+                                    	      </div>
+
+                        	  </div>
+              	</div>
+      	        <div id="error_msg_{{item.inventory_number}}"></div>
+
+              	<div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <input type="submit" id="modal_submitbutton_{{item.inventory_number}}" class="btn btn-default btn-lg"  class="form-control" value="Submit">
+              	</div>
+                </form>
+
+                <script>
+
+                $("#modal_item_form_{{item.inventory_number}}").on( "submit", function (event) { 
+                      console.log("hello_{{item.inventory_number}}")
+                      console.log("inventory_number={{item.inventory_number}}"+"&"+$(this).serialize());
+                      $('#modal_submitbutton_{{item.inventory_number}}').val("Hold you horses!!! Submitting...");
+                      var numericExpression = /^[0-9.]+$/;
+                      
+                      var form_numeric = $("#buying_price_{{item.inventory_number}}").val().match(numericExpression) && $("#expected_sale_price_{{item.inventory_number}}").val().match(numericExpression) && $("#quantity_{{item.inventory_number}}").val().match(numericExpression);
+                      //console.log(form_numeric);
+                      if(form_numeric) {
+                            $.post("/modal/post", "inventory_number={{item.inventory_number}}"+"&"+$(this).serialize()).done( 
+                            function(data) {
+                                  console.log("done with submit"); 
+                                  $('#edit_modal_{{item.inventory_number}}').modal('toggle');
+                                  $('#{{item.inventory_number}}').replaceWith(data);
+                                  $('#{{item.inventory_number}}').css('background-color', 'green');;
+
+
+                            }); 
+                      } 
+                      else {
+                            $("#modal_submitbutton_{{item.inventory_number}}").val("Resubmit");
+                            $("#error_msg_{{item.inventory_number}}").html("Make sure all values are entered and are numbers!");
+                      }
+                      
+                      return false;
+                });
+                </script>
+
+
+
+              </div>
+    
+    </div>
+  </div>
+
+</div>
+  {% endfor %}
