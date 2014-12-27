@@ -12,25 +12,37 @@ from google.appengine.ext.webapp import blobstore_handlers
 from google.appengine.ext import db
 from google.appengine.ext import ndb
 from google.appengine.api import images
+from google.appengine.api import memcache
+
 from webapp2_extras import sessions
+
 
 config = {}
 config['webapp2_extras.sessions'] = dict(secret_key='')
 #upload_url_rpc = blobstore.create_upload_url_async('/upload')
 #upload_url = upload_url_rpc.get_result()
 
+#Model to keep track of current highest inventory number reached
 class Counter(ndb.Model):
     counter = ndb.StringProperty(required=True)
 
+#Model to tracck category names
 class Category(ndb.Model):
     category = ndb.StringProperty(required=True)
 
+# Model for items in inventory. 
 class Item(ndb.Model):
     picture_url = ndb.StringProperty(required=True)
     inventory_number = ndb.StringProperty(required=True)
+
+    #To be honest. This isn't really necessary. Need to contemplate removing.
     status = ndb.StringProperty(required=True)
+
+    # Stored in RS
     buying_price = ndb.StringProperty(required=True)
     expected_sale_price = ndb.StringProperty(required=True)
+
+    # Average of sales - again is this necessary? We can build it on the fly.
     sale_price = ndb.StringProperty(required=True)
     date = ndb.DateTimeProperty(auto_now_add=True)
     conversion_rate  = ndb.StringProperty(required=True)
@@ -44,7 +56,6 @@ class BaseHandler(webapp2.RequestHandler):
         This snippet of code is taken from the webapp2 framework documentation.
         See more at
         http://webapp-improved.appspot.com/api/webapp2_extras/sessions.html
-
         """
         self.session_store = sessions.get_store(request=self.request)
         try:
@@ -58,7 +69,6 @@ class BaseHandler(webapp2.RequestHandler):
         This snippet of code is taken from the webapp2 framework documentation.
         See more at
         http://webapp-improved.appspot.com/api/webapp2_extras/sessions.html
-fac
         """
         return self.session_store.get_session()
     
@@ -68,25 +78,27 @@ class HomeHandler(BaseHandler):
     def get(self):        
             self.redirect("/portal")
 
-        
+# Handles a new inventory items.        
 class ServiceHandler(BaseHandler):
     def get(self):
       template = jinja_environment.get_template('form.html')
+      
+      # Url for the blob store. This is forwarded to the page
       upload_url = blobstore.create_upload_url('/upload')      
+
+      # Build list of categories to display.
       query = Category.query(ancestor=ndb.Key('Category','chetna')).order(Category.category)
       categories = [dict([('category',q.category)] ) for q in query.iter()]        
 
-      self.response.out.write(template.render(dict(
-        url = upload_url, categories = categories 
-      )))
+      self.response.out.write(template.render(dict(url = upload_url,
+                                                   categories = categories)))
             
     def post(self):
-        
+        # Blob for adding a picture to the blob store.
         blob_key = self.request.get('imagekey')
         blob_reader = blobstore.BlobReader(blob_key,buffer_size=1048576)
         
-        
-        #update the curr inventory
+        # Update the curr inventory counter
         counter_key = ndb.Key('Counter','chetna')
         curr_counter = counter_key.get() 
         inventory_number = None;
@@ -99,7 +111,8 @@ class ServiceHandler(BaseHandler):
             curr_counter.counter = inventory_number
             
         curr_counter.put()
-        
+
+        # Build the item.
         item = Item(parent = ndb.Key('Item','chetna'),
                     inventory_number = inventory_number,
                     picture_url=images.get_serving_url(blob_key),
@@ -111,42 +124,53 @@ class ServiceHandler(BaseHandler):
                     category = self.request.get("category"),
                     quantity = self.request.get("quantity")
                   )
-    
-    
         item.put()
         self.response.out.write(inventory_number)
-#        self.redirect('/redirect?submit_post&inventory_number='+inventory_number)
 
-     
+
+# Handles edit modal 
 class ModalHandler(BaseHandler):
-
-            
     def post(self):
+        # Parse post request
         inventory_number = self.request.get("inventory_number");
         category = self.request.get("category")
         buying_price = self.request.get("buying_price")
         quantity = self.request.get("quantity")
         expected_sale_price = self.request.get("expected_sale_price")
-        print inventory_number,category,buying_price,quantity,expected_sale_price
 
-        query = Category.query(ancestor=ndb.Key('Category','chetna')).order(Category.category)
-        categories = [dict([('category',q.category)] ) for q in query.iter()]        
-        
-
+ 
         queries = Item.query(Item.inventory_number==inventory_number, ancestor=ndb.Key('Item','chetna')) #better be unique !!!!
+        # Rebuild query.
+
         query  = queries.fetch()[0]
         query.category = category
         query.buying_price = buying_price
+
+        # Logic to handle the quantity changing but the item is sold.
+        # TODO: I still think it is broken if the quantity goes down and the item is sold
+        # ...maybe we should never allow the quantity to adjust downwards? 
+        # Maybe it is not worth keeping a status variable at all? This can be computed on the fly right?
+        old_quantity = query.quantity
+        if query.status == "sold":
+            if old_quantity < quantity:
+                query.status = "unsold"
+                
         query.quantity = quantity
         query.expected_sale_price = expected_sale_price
+
         query.put()
+
         template_row = jinja_environment.get_template('manage_row.html')
 
+        # Query all categories. Needed to reconstruct modal. 
+        query = Category.query(ancestor=ndb.Key('Category','chetna')).order(Category.category)
+        categories = [dict([('category',q.category)] ) for q in query.iter()]        
+
+        # Write out the resulting edited item.
         items = build_items(queries)
         self.response.out.write(template_row.render(dict(items=items, categories = categories)))
         
-        #self.redirect('/redirect?submit_post&inventory_number='+inventory_number)
-     
+# Setting page where categories can be specified.
 class SettingsHandler(BaseHandler):
     def get(self):
         template = jinja_environment.get_template('settings.html')
@@ -167,7 +191,7 @@ class SettingsHandler(BaseHandler):
         cat.put()
         self.response.out.write(category)
 
- 
+# Handles a new sale in the system.
 class SaleHandler(BaseHandler):
     def get(self):
         inventory_number = self.request.get("inventory_number")
@@ -200,14 +224,20 @@ class SaleHandler(BaseHandler):
             sum+=float(s)
         return (1.*sum)/len(sales)
         
-
+# Creates the data page for statistics. Eventually this should be a more dynamic module(!) that uses angular and D3.js for visualization.
 class DataHandler(BaseHandler):
     def get(self):
         template = jinja_environment.get_template('data.html')
         template_rows = jinja_environment.get_template('data_row.html')
         query = Item.query(ancestor=ndb.Key('Item','chetna')).order(-Item.inventory_number)
-        #USe fetch instead
-        items = [q for q in query.iter()]
+        
+
+        # Basic 
+        items_cached = memcache.get('items')
+        if items is not None:
+            items = items_cached
+        else:
+            items = query.fetch()#[q for q in query.iter()]
 
         cost = sum([0 if (q.conversion_rate==None) else round(float(q.buying_price)*float(q.quantity)/float(q.conversion_rate),2) for q in query.iter()])
         revenue = sum([0 if q.sale_price==None else float(q.sale_price)*float(len(q.sales)) for q in query.iter()])
@@ -215,9 +245,14 @@ class DataHandler(BaseHandler):
         
         query2 = Category.query(ancestor=ndb.Key('Category','chetna')).order(Category.category)
         categories = [q.category for q in query2.iter()]        
+        
+        
 
-
+        
         rows = []
+
+        if 
+
         for category in categories:
             local_items = filter(lambda x: x.category == category,items)
             d = dict()
@@ -234,20 +269,13 @@ class DataHandler(BaseHandler):
                 d['color'] = "green"
             else:
                 d['color'] = "black"
+            #d['potential_profit'] = 
             rows.append(d)
-
-            #Do this ten times better using filter
-            #rows = [dict([                      
-            #('category',category),
-            #('number_of_items',sum([int(q.quantity) for q in items if q.category==category])),
-            #('number_of_items_unsold',sum([int(q.quantity)-len(q.sales)  for q in items if (q.category==category)])),
-            #('number_of_items_sold',sum([len(q.sales) for q in items if (q.category==category) ])),
-            #('average_cost',sum([ 0 if (q.conversion_rate==None) else round(float(q.buying_price)/float(q.conversion_rate),2) for q in items if q.category==category ])/len([0 for q in items if q.category==category])),
-        #('cost',sum([ 0 if (q.conversion_rate==None) else round(float(q.buying_price)*float(q.quantity)/float(q.conversion_rate),2) for q in items if q.category==category ])),
-           # ('revenue',sum([  0 if q.sale_price==None else float(q.sale_price)*float(len(q.sales)) for q in items if q.category==category ] ) for category in categories]
-
-
-        self.response.out.write(template.render(dict(cost=str(round(cost, 2)), revenue=str(round(revenue, 2)),profit=str(round(profit, 2)),rows=template_rows.render(rows=rows))))
+            
+        self.response.out.write(template.render(dict(cost=str(round(cost, 2)),
+                                                     revenue=str(round(revenue, 2)),
+                                                     profit=str(round(profit, 2)),
+                                                     rows=template_rows.render(rows=rows))))
 
 
 
@@ -258,7 +286,7 @@ class ManageHandler(BaseHandler):
         query = Item.query(ancestor=ndb.Key('Item','chetna')).order(-Item.inventory_number)
         items = build_items(query,0)
         
-        #Use this to do some bulk changes!!!
+        #DO NOT DELETE: Use this to do some bulk changes!!!
         # for q in query:
         #     if q.status == "sold" and len(q.sales)==0:
         #         q.sales.append(q.sale_price)
@@ -271,20 +299,27 @@ class ManageHandler(BaseHandler):
         self.response.out.write(template.render(dict(rows = template_row.render(dict(items = items,categories=categories)),categories=categories)))
     
     def post(self):
+        # Delete an item
         if self.request.path == '/manage/deletepost':
             inventory_number = self.request.get("postkey")
             query = Item.query(Item.inventory_number==inventory_number, ancestor=ndb.Key('Item','chetna')).fetch()[0] #better be unique !!!!
             query.key.delete()
             self.response.out.write("success");
-        
+            
+        # Display all items in a given category
         elif self.request.path == '/manage/query_category':
             template_row = jinja_environment.get_template('manage_row.html')
             category = self.request.get("category")
             print category
             queries = Item.query(Item.category==category, ancestor=ndb.Key('Item','chetna')).order(-Item.inventory_number) #better be unique !!!!
             items = build_items(queries)
-            self.response.out.write(template_row.render(dict(items=items)))
+            
+            query2 = Category.query(ancestor=ndb.Key('Category','chetna')).order(Category.category)
+            categories = [dict([('category',q.category)] ) for q in query2.iter()]        
 
+            self.response.out.write(template_row.render(dict(items=items, categories=categories)))
+
+        # Query by inventory number
         elif self.request.path == '/manage/query_inventory_number':
             print self.request
             template_row = jinja_environment.get_template('manage_row.html')
@@ -294,11 +329,13 @@ class ManageHandler(BaseHandler):
             if queries.count() == 0:
                 self.response.out.write("fail")
             else:
+                query2 = Category.query(ancestor=ndb.Key('Category','chetna')).order(Category.category)
+                categories = [dict([('category',q.category)] ) for q in query2.iter()]        
 
                 items = build_items(queries)
-                self.response.out.write(template_row.render(dict(items=items)))
+                self.response.out.write(template_row.render(dict(items=items, categories=categories)))
             
-
+# Utility method to build a dictionary of items for the jinja2 template
 def build_items(query,limit=0):
     items = []
     if limit == 0:
@@ -352,20 +389,13 @@ class RedirectHandler(BaseHandler):
             print "make a key"+obj['key']
             self.response.headers['Content-Type'] = 'application/json'   
             self.response.out.write(json.dumps(obj))
-        # else:# self.request.get('submit_post') != '':
-        #     print "request "+self.request.get("inventory_number")
-        #     #self.redirect('/end?inventory_number='+self.request.get("inventory_number"))
-        #     template = jinja_environment.get_template('end.html')
-        #     print "end "+self.request.get("inventory_number")
-        #     dd = {"inventory_number":self.request.get("inventory_number")}
-        #     self.response.out.write(template.render(dd))
 
+# The Portal you see when you enter the app.
 class PortalHandler(BaseHandler):
     def get(self):
       template = jinja_environment.get_template('portal.html')
       self.response.out.write(template.render())
- 
-
+            
 class EndHandler(BaseHandler):
     def get(self):
       template = jinja_environment.get_template('end.html')
