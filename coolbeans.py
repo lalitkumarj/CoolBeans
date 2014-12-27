@@ -131,6 +131,10 @@ class ServiceHandler(BaseHandler):
 # Handles edit modal 
 class ModalHandler(BaseHandler):
     def post(self):
+        
+        # MEMCAHCE: Since we are changing an item, reset the memcache
+        memcache.delete('items')
+        
         # Parse post request
         inventory_number = self.request.get("inventory_number");
         category = self.request.get("category")
@@ -138,7 +142,8 @@ class ModalHandler(BaseHandler):
         quantity = self.request.get("quantity")
         expected_sale_price = self.request.get("expected_sale_price")
 
- 
+        
+        
         queries = Item.query(Item.inventory_number==inventory_number, ancestor=ndb.Key('Item','chetna')) #better be unique !!!!
         # Rebuild query.
 
@@ -232,26 +237,26 @@ class DataHandler(BaseHandler):
         query = Item.query(ancestor=ndb.Key('Item','chetna')).order(-Item.inventory_number)
         
 
-        # Basic 
-        items_cached = memcache.get('items')
-        if items is not None:
-            items = items_cached
-        else:
-            items = query.fetch()#[q for q in query.iter()]
+        items = query.fetch()
 
-        cost = sum([0 if (q.conversion_rate==None) else round(float(q.buying_price)*float(q.quantity)/float(q.conversion_rate),2) for q in query.iter()])
-        revenue = sum([0 if q.sale_price==None else float(q.sale_price)*float(len(q.sales)) for q in query.iter()])
+        # Basic attempt at caching items - eventually cache actual statistics
+        # items_cached = memcache.get('items')
+        # Not sure how much it is speeding things up by! Need to time things.
+        # if items_cached is not None:
+        #     items = items_cached
+        # else:
+        #     items = query.fetch()
+        #     memcache.add('items',items)
+        cost = sum([0 if (q.conversion_rate==None) else round(float(q.buying_price)*float(q.quantity)/float(q.conversion_rate),2) for q in items])
+        revenue = sum([0 if q.sale_price==None else float(q.sale_price)*float(len(q.sales)) for q in items])
         profit = revenue-cost
         
         query2 = Category.query(ancestor=ndb.Key('Category','chetna')).order(Category.category)
         categories = [q.category for q in query2.iter()]        
         
-        
-
-        
         rows = []
 
-        if 
+        
 
         for category in categories:
             local_items = filter(lambda x: x.category == category,items)
@@ -275,10 +280,19 @@ class DataHandler(BaseHandler):
         self.response.out.write(template.render(dict(cost=str(round(cost, 2)),
                                                      revenue=str(round(revenue, 2)),
                                                      profit=str(round(profit, 2)),
-                                                     rows=template_rows.render(rows=rows))))
+                                                     rows=template_rows.render(rows=rows),
+                                                     piechartObj = self.build_piechart(rows))))
 
-
-
+        def build_piechart(self, rows):
+            content = []
+            for row in rows:
+                obj = dict()
+                obj["label"] = row["category"]
+                obj["value"] = row["profit"] 
+            data["data"] = content
+            return json(obj)
+            
+        
 class ManageHandler(BaseHandler):
     def get(self):
         template = jinja_environment.get_template('manage.html')
@@ -299,6 +313,9 @@ class ManageHandler(BaseHandler):
         self.response.out.write(template.render(dict(rows = template_row.render(dict(items = items,categories=categories)),categories=categories)))
     
     def post(self):
+        # MEMCACHE: Reset memcache since we are changing items
+        memcache.delete('items')
+        
         # Delete an item
         if self.request.path == '/manage/deletepost':
             inventory_number = self.request.get("postkey")
@@ -334,7 +351,9 @@ class ManageHandler(BaseHandler):
 
                 items = build_items(queries)
                 self.response.out.write(template_row.render(dict(items=items, categories=categories)))
-            
+
+        
+        
 # Utility method to build a dictionary of items for the jinja2 template
 def build_items(query,limit=0):
     items = []
@@ -412,37 +431,3 @@ application = webapp2.WSGIApplication(
     debug=True,
     config=config
 )
-
-        # for group in select_groups:
-        #     self.graph.put_wall_post(description, {"link":"http://facebook.com/%s"%(posted_id),"picture":images.get_serving_url(blob_key)}, group)
-
-#('/login', LoginHandler),  , ('/manage', ManageHandler), ('/manage/deletepost', ManageHandler), , , ('/logout', LogoutHandler), 
-
-
-
-
-
-#('/serve/([^/]+)?',ServeHandler),('/upload',UploadHandler),('/app/picture_upload',PictureHandler),('/app/data_upload',DataHandler)
-# class PictureHandler(blobstore_handlers.BlobstoreUploadHandler):
-#     def get(self):
-#         upload_url = blobstore.create_upload_url("/upload")
-#         print "upload_url",upload_url
-#         self.response.out.write(upload_url);
-
-# class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
-#     def post(self):
-#         print self.get_uploads()
-#         upload_files = self.get_uploads()[0]
-#         #blob_info = upload_files
-#         #self.redirect('/serve/%s' % blob_info.key())
-
-# class ServeHandler(blobstore_handlers.BlobstoreDownloadHandler):
-#   def get(self, resource):
-#       resource = str(urllib.unquote(resource))
-#       blob_info = blobstore.BlobInfo.get(resource)
-#       self.send_blob(blob_info)
-
-# class DataHandler(BaseHandler):
-#     def post(self):
-#         print self.request.get("message");
-#         self.response.out.write("Got Data")

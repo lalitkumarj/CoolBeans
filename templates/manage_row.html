@@ -1,7 +1,18 @@
   {% for item in items %}
   <tr id="row_{{item.inventory_number}}">
     <td> {{item.inventory_number}}</td>
-    <td> <img id="thumbnail_{{item.inventory_number}}" src="{{item.picture_url}}" width="100px" class="img-thumbnail"></img></td>
+    <td> <img id="thumbnail_{{item.inventory_number}}"  src="thumbnail_{{item.inventory_number}}" width="100px" class="img-thumbnail"></img>
+      <!-- <script>
+      var img = document.getElementById("thumbnail_{{item.inventory_number}}"); 
+      img.onload = function() { 
+      change_image(); 
+      } 
+      
+      function change_image() {
+      document.getElementById("thumbnail_{{item.inventory_number}}").src="{{item.picture_url}}";
+      }
+      </script> -->
+    </td>
     <td> {{item.category}}</td>
     <td> {{item.status}} </td>
     <td> {{item.quantity}}</td>
