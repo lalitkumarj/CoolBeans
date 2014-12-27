@@ -226,7 +226,14 @@ class DataHandler(BaseHandler):
             d['number_of_items_unsold'] = sum([int(q.quantity)-len(q.sales)  for q in local_items])
             d['number_of_items_sold'] = sum([len(q.sales) for q in local_items])
             d['cost'] = sum([ 0 if (q.conversion_rate==None) else round(float(q.buying_price)*float(q.quantity)/float(q.conversion_rate),2) for q in local_items])
-            d['revenue'] = sum([  0 if q.sale_price==None else float(q.sale_price)*float(len(q.sales)) for q in local_items])
+            d['revenue'] = sum([  0 if q.sale_price==None else round(float(q.sale_price)*float(len(q.sales)),2) for q in local_items])
+            d['profit'] = d['revenue'] - d['cost']
+            if d['profit'] < 0:
+                d['color'] = "red"
+            elif d['profit'] > 100:
+                d['color'] = "green"
+            else:
+                d['color'] = "black"
             rows.append(d)
 
             #Do this ten times better using filter

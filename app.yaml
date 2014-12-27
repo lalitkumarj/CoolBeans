@@ -14,7 +14,7 @@ handlers:
   upload: (.*\.(gif|png|jpg|ico|js|css))
 
 - url: /.*
-  script: example.application
+  script: coolbeans.application
 
 libraries:
 - name: webapp2
