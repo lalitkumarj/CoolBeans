@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Photo Uploader{% endblock %}
+{% block title %}Manage Inventory{% endblock %}
 {% block content %}
 <!-- <script>
 $('.popover-dismiss').popover({
@@ -18,111 +18,107 @@ trigger: 'focus'
     <div class="col-md-6">
       <form id='inventory_number_form' class="form-inline" role="form">
       	<label for="inventory_number">Inventory Number: </label>
-	<div id ='inventory_number_div' name="inventory_number_div" class="form-group">
-	  <input id='inventory_number' name='inventory_number' class="form-control"></input>
-	</div>
-	<div class="form-group">
-	  <input type="submit" id="submitbutton" class="btn btn-default"  class="form-control" value="Submit">
-	</div>
-      </form>
+       <div id ='inventory_number_div' name="inventory_number_div" class="form-group">
+         <input id='inventory_number' name='inventory_number' class="form-control"></input>
+       </div>
+       <div class="form-group">
+         <input type="submit" id="submitbutton" class="btn btn-default"  class="form-control" value="Submit">
+       </div>
+     </form>
 
-      <div id="error_msg"></div>
-      <br/>
-      <script>
-       $("#inventory_number_form").on( "submit", function (event) { 
-	 
-	 console.log($(this).serialize());
-	 console.log($("#inventory_number").val())
-	 var numericExpression = /^[0-9.]+$/;
-	 var form_numeric = $("#inventory_number").val().match(numericExpression);
-	 
-	 if(form_numeric) {
-	   $.post("/manage/query_inventory_number", $("#inventory_number_form").serialize()).done( 
-	     function(data) {
-	       if(data == "fail"){
-		 $("#inventory_number_div").addClass("has-error");
-		 $("#error_msg").html("Inventory Number not found");
-	       }
-	       
-	       else {
-		 console.log(data);
-		 $("#rows").empty();
-		 $("#rows").html(data);
-	       }
-	       
-	     }); 
-	 } 
-	 else {
-	   $("#inventory_number_div").addClass("has-error");
-	   $("#submitbutton").val("Resubmit");
-	   $("#error_msg").html("Make sure all values are entered and are numbers!");
-	 }
-	 
-	 return false;
-       });
-      </script>
-    </div>
-    
-    <div class="col-md-6">
-      <form id='category_chooser' class="form-inline" role="form">
-	<label for="category">Category: </label>
-	<select id= "category" name="category" class="form-control">
-	  {% for category in categories %}
-	  <option value="{{category.category}}"> {{category.category}} </option>
-	  {% endfor %}
-	</select>
-	
-	<div class="form-group">
-	  <input type="submit" id="submitbutton" class="btn btn-default"  class="form-control" value="Submit">
-	</div>
-      </form>
-      
-      <div id="error_msg"></div>
-      <br/>
-      <script>
-       $("#category_chooser").on( "submit", function (event) { 
-	 
-	 console.log($(this).serialize());
-	 console.log($("#category_chooser").val())
-	 
-	 $.post("/manage/query_category", $("#category_chooser").serialize()).done( 
-	 function(data) {
-	   console.log(data);
-	   $("#rows").empty();
-	   $("#rows").html(data);
-	 }); 
-	 
-       return false;
-       });
-      </script>
-    </div>
-    
+     <div id="error_msg"></div>
+     <br/>
+     <script>
+     $("#inventory_number_form").on( "submit", function (event) { 
+      console.log($(this).serialize());
+      console.log($("#inventory_number").val())
+      var numericExpression = /^[0-9.]+$/;
+      var form_numeric = $("#inventory_number").val().match(numericExpression);
+      if(form_numeric) {
+        $.post("/manage/query_inventory_number", 
+               $("#inventory_number_form").serialize()).done( 
+               function(data) {
+                if(data == "fail"){
+                 $("#inventory_number_div").addClass("has-error");
+                 $("#error_msg").html("Inventory Number not found");
+               }
+               else {
+                 console.log(data);
+                 $("#rows").empty();
+                 $("#rows").html(data);
+               }
+             }); 
+             } 
+             else {
+              $("#inventory_number_div").addClass("has-error");
+              $("#submitbutton").val("Resubmit");
+              $("#error_msg").html("Make sure all values are entered and are numbers!");
+            }
+            return false;
+          });
+</script>
+</div>
 
-  </div>
+<div class="col-md-6">
+  <form id='category_chooser' class="form-inline" role="form">
+   <label for="category">Category: </label>
+   <select id= "category" name="category" class="form-control">
+     {% for category in categories %}
+     <option value="{{category.category}}"> {{category.category}} </option>
+     {% endfor %}
+   </select>
 
-  <div class="row">
-    <table class="table">
-      <tr>
-	<th> Inventory Number </th>
-	<th> Picture </th>
-	<th> Category</th>
-	<th> Status </th>
-	<th> Quantity </th>
-	<th> Quantity Sold</th>
-	<th> Buying Price </th>
-	<th> Expected Sale Price </th>
-	<th> Sold Price </th>
-	<th> Post Date </th>
-	
-	<th>  </th>
-      </tr>
-      <tbody id="rows">
-      {% autoescape false %}
-      {{rows|safe}}
-      {% endautoescape %}
-      </tbody>
-    </table>
-  </div>
+   <div class="form-group">
+     <input type="submit" id="submitbutton" class="btn btn-default"  class="form-control" value="Submit">
+   </div>
+ </form>
+
+ <div id="error_msg"></div>
+ <br/>
+ <script>
+ $("#category_chooser").on( "submit", function (event) { 
+
+  console.log($(this).serialize());
+  console.log($("#category_chooser").val())
+
+  $.post("/manage/query_category", $("#category_chooser").serialize()).done( 
+                                                                            function(data) {
+                                                                              console.log(data);
+                                                                              $("#rows").empty();
+                                                                              $("#rows").html(data);
+                                                                            }); 
+
+  return false;
+});
+ </script>
+</div>
+
+
+</div>
+
+<div class="row">
+  <table class="table">
+    <tr>
+     <th> Inventory Number </th>
+     <th> Picture </th>
+     <th> Category</th>
+     <th> Status </th>
+     <th> Quantity </th>
+     <th> Quantity Sold</th>
+     <th> Buying Price </th>
+     <th> Expected Sale Price </th>
+     <th> Sold Price </th>
+     <th> Post Date </th>
+     <th> Actions </th>
+   </tr>
+   <tbody id="rows">
+    {% autoescape false %}
+    {{rows|safe}}
+    {% endautoescape %}
+  </tbody>
+</table>
+
+</div>
 </div>
 
 

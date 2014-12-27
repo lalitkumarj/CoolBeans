@@ -129,6 +129,10 @@ class ModalHandler(BaseHandler):
         expected_sale_price = self.request.get("expected_sale_price")
         print inventory_number,category,buying_price,quantity,expected_sale_price
 
+        query = Category.query(ancestor=ndb.Key('Category','chetna')).order(Category.category)
+        categories = [dict([('category',q.category)] ) for q in query.iter()]        
+        
+
         queries = Item.query(Item.inventory_number==inventory_number, ancestor=ndb.Key('Item','chetna')) #better be unique !!!!
         query  = queries.fetch()[0]
         query.category = category
@@ -139,7 +143,7 @@ class ModalHandler(BaseHandler):
         template_row = jinja_environment.get_template('manage_row.html')
 
         items = build_items(queries)
-        self.response.out.write(template_row.render(dict(items=items)))
+        self.response.out.write(template_row.render(dict(items=items, categories = categories)))
         
         #self.redirect('/redirect?submit_post&inventory_number='+inventory_number)
      
@@ -245,7 +249,7 @@ class ManageHandler(BaseHandler):
         template = jinja_environment.get_template('manage.html')
         template_row = jinja_environment.get_template('manage_row.html')
         query = Item.query(ancestor=ndb.Key('Item','chetna')).order(-Item.inventory_number)
-        items = build_items(query)
+        items = build_items(query,0)
         
         #Use this to do some bulk changes!!!
         # for q in query:
@@ -283,6 +287,7 @@ class ManageHandler(BaseHandler):
             if queries.count() == 0:
                 self.response.out.write("fail")
             else:
+
                 items = build_items(queries)
                 self.response.out.write(template_row.render(dict(items=items)))
             
@@ -297,6 +302,7 @@ def build_items(query,limit=0):
                            ('picture_url', q.picture_url),
                            ('expected_sale_price',("0" if q.expected_sale_price== None else q.expected_sale_price)),
                            ('buying_price',("0" if (q.conversion_rate==None) else str(round(float(q.buying_price)/float(q.conversion_rate),2)))),
+                           ('rupees_buying_price',q.buying_price),
                            ('sale_price',("0" if q.sale_price==None else q.sale_price)),
                            ('category',q.category),
                            ('quantity',q.quantity),
@@ -308,9 +314,10 @@ def build_items(query,limit=0):
                            ('date', q.date.date()), 
                            ('status', q.status),
                            ('picture_url', q.picture_url),
-                           ('expected_sale_price', "$"+ ("0" if q.expected_sale_price== None else q.expected_sale_price)),
-                           ('buying_price',"$" + ("0" if (q.conversion_rate==None) else str(round(float(q.buying_price)/float(q.conversion_rate),2)))),
-                           ('sale_price', "$"+("0" if q.sale_price==None else q.sale_price)),
+                           ('expected_sale_price',("0" if q.expected_sale_price== None else q.expected_sale_price)),
+                           ('buying_price',("0" if (q.conversion_rate==None) else str(round(float(q.buying_price)/float(q.conversion_rate),2)))),
+                           ('rupees_buying_price',q.buying_price),
+                           ('sale_price',("0" if q.sale_price==None else q.sale_price)),
                            ('category',q.category),
                            ('quantity',q.quantity),
                            ('quantity_sold',str(len(q.sales)))
