@@ -13,32 +13,65 @@
 <!-- <div class="fb-post" data-href="https://www.facebook.com/FacebookDevelopers/posts/10151471074398553" data-width="500"> </div> -->
 
 <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.4.4/d3.min.js"></script>
-<script src="d3pie.min.js"></script>
-<div id="myPie"></div>
-<script>
-
-  var pie = new d3pie("pie", {
-    header: {
-      title: {
-        text: "A Very Simple Pie",
-        fontSize: 30
-      }
-    },
-    data: {
-      content: [
-        { label: "JavaScript", value: 264131 },
-        { label: "Ruby", value: 218812 },
-        { label: "Java", value: 157618}
-      ]
-    }
-  });
-</script>
+<script src="js/d3pie.min.js"></script>
 
 
 <div class="container">
   <div class="row">
-    <h3>  Revenue: {{revenue}} | Cost: {{cost}} | Profit: {{profit}} </h3>
+    <h3>  Revenue: {{revenue}} | Cost: {{cost}} | Profit: {{profit}} | Expected Profit: {{expected_profit}}</h3>
   </div>
+    <div id="myPie"></div>
+    <script>
+     var data =  {{piechartObj|safe}};
+     data["sortOrder"]= "value-desc";
+     data["smallSegmentGrouping"] = {"enabled": true};
+     var pie = new d3pie("myPie", {
+       header: {
+	 title: {
+           text: "Profit By Category",
+           fontSize: 16
+	 }
+       },
+       tooltips: {
+	 "enabled": true,
+	 "type": "placeholder",
+	 "string": "{label}: {value}, {percentage}%"
+       },
+       size: {
+	 canvasHeight: 600,
+	 canvasWidth:800,
+	 pieInnerRadius: "18%",
+	 pieOuterRadius: "96%"
+       },
+       labels : {
+	 "outer": {
+	   "hideWhenLessThanPercentage": 1,
+	   "pieDistance": 8
+	 },
+	 "inner": {
+	   "format": "value",
+	   "hideWhenLessThanPercentage": 3
+	 },
+	 "mainLabel": {
+	   "fontSize": 11
+	 },
+	 "percentage": {
+	   "color": "#ffffff",
+	   "decimalPlaces": 0
+	 },
+	 "value": {
+	   "color": "#adadad",
+	   "fontSize": 11
+	 },
+	 "lines": {
+	   "enabled": true
+	 }
+       },
+       data: data
+     })
+     $("#myPie svg").attr("class","center-block");
+    </script>
+
 
   <div class="row">
     <table class="table">
@@ -51,6 +84,7 @@
 	<th> Total Cost</th>
 	<th> Total Revenue</th>
 	<th> Total Profit</th>
+	<th> Expected Profit</th>
       </tr>
       {% autoescape false %}
       {{rows|safe}}

@@ -256,8 +256,6 @@ class DataHandler(BaseHandler):
         
         rows = []
 
-        
-
         for category in categories:
             local_items = filter(lambda x: x.category == category,items)
             d = dict()
@@ -267,7 +265,8 @@ class DataHandler(BaseHandler):
             d['number_of_items_sold'] = sum([len(q.sales) for q in local_items])
             d['cost'] = sum([ 0 if (q.conversion_rate==None) else round(float(q.buying_price)*float(q.quantity)/float(q.conversion_rate),2) for q in local_items])
             d['revenue'] = sum([  0 if q.sale_price==None else round(float(q.sale_price)*float(len(q.sales)),2) for q in local_items])
-            d['profit'] = d['revenue'] - d['cost']
+            d['profit'] = round(d['revenue'] - d['cost'],2)
+            d['expected_profit'] = sum([float(q.expected_sale_price)*float(q.quantity) for q in local_items])-d['cost']
             if d['profit'] < 0:
                 d['color'] = "red"
             elif d['profit'] > 100:
@@ -276,21 +275,23 @@ class DataHandler(BaseHandler):
                 d['color'] = "black"
             #d['potential_profit'] = 
             rows.append(d)
-            
+        piechartObj = self.build_piechart(rows)
         self.response.out.write(template.render(dict(cost=str(round(cost, 2)),
                                                      revenue=str(round(revenue, 2)),
                                                      profit=str(round(profit, 2)),
+                                                     expected_profit=str(sum([row['expected_profit'] for row in rows])),
                                                      rows=template_rows.render(rows=rows),
-                                                     piechartObj = self.build_piechart(rows))))
+                                                     piechartObj = piechartObj)))
 
-        def build_piechart(self, rows):
-            content = []
-            for row in rows:
+    def build_piechart(self, rows):
+        content = []
+        for row in rows:
+            if row["profit"] > 0:
                 obj = dict()
-                obj["label"] = row["category"]
-                obj["value"] = row["profit"] 
-            data["data"] = content
-            return json(obj)
+                obj["label"] = row['category']
+                obj["value"] = round(row['profit'],2)
+                content.append(obj)
+        return json.dumps({"content":content})
             
         
 class ManageHandler(BaseHandler):
